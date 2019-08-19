@@ -1,12 +1,24 @@
 package com.codve.photogallery;
 
+import android.net.Uri;
+import android.util.Log;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 
 public class FlickrFetcher {
+
+    private static final String TAG = "FlickrFetcher";
+    private static final String API_KEY = "f21e87e7a6beb65edab0dde2b1888b9e";
 
     // 从指定 URL 中获取字节
     public byte[] getUrlBytes(String urlString) throws IOException {
@@ -34,5 +46,49 @@ public class FlickrFetcher {
 
     public String getUrlString(String urlString) throws IOException {
         return new String(getUrlBytes(urlString));
+    }
+
+    public List<GalleryItem> fetchItems() {
+
+        List<GalleryItem> items = new ArrayList<>();
+
+        try {
+            String url = Uri.parse("https://api.flickr.com/services/rest/")
+                    .buildUpon()
+                    .appendQueryParameter("method", "flickr.photos.getRecent")
+                    .appendQueryParameter("api_key", API_KEY)
+                    .appendQueryParameter("format", "json")
+                    .appendQueryParameter("nojsoncallback", "1")
+                    .appendQueryParameter("extras", "url_s")
+                    .build().toString();
+            String jsonString = getUrlString(url);
+            JSONObject jsonBody = new JSONObject(jsonString);
+            parseItems(items, jsonBody);
+        } catch (IOException e) {
+            Log.e(TAG, "Failed to fetch items", e);
+        } catch (JSONException e) {
+            Log.e(TAG, "Failed to parse JSON", e);
+        }
+        return items;
+    }
+
+    private void parseItems(List<GalleryItem> items, JSONObject jsonBody)
+        throws IOException, JSONException {
+        JSONObject photosJsonObject = jsonBody.getJSONObject("photos"); // 获取"photos" 的值
+        JSONArray photoJsonArray = photosJsonObject.getJSONArray("photo"); // 获取"photo" 的值
+
+        for (int i = 0; i < photoJsonArray.length(); i++) {
+            JSONObject photoJsonObject = photoJsonArray.getJSONObject(i);
+
+            GalleryItem item = new GalleryItem();
+            item.setId(photoJsonObject.getString("id"));
+            item.setCaption(photoJsonObject.getString("title"));
+
+            if (!photoJsonObject.has("url_s")) {
+                continue;
+            }
+            item.setUrl(photoJsonObject.getString("url_s"));
+            items.add(item);
+        }
     }
 }
