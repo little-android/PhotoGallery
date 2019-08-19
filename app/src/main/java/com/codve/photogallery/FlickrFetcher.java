@@ -72,6 +72,7 @@ public class FlickrFetcher {
         return items;
     }
 
+    // 构造请求 URL: https://api.flickr.com/services/rest/?method=flickr.photos.getRecent&api_key=f21e87e7a6beb65edab0dde2b1888b9e&format=json&nojsoncallback=1
     private void parseItems(List<GalleryItem> items, JSONObject jsonBody)
         throws IOException, JSONException {
         JSONObject photosJsonObject = jsonBody.getJSONObject("photos"); // 获取"photos" 的值
