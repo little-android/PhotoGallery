@@ -26,11 +26,10 @@ public class FlickrFetcher {
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         try {
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            InputStream inputStream = connection.getInputStream(); // 这是才真正发起 HTTP 请求
+            InputStream inputStream = connection.getInputStream(); // 这时才真正发起 HTTP 请求
 
             if (connection.getResponseCode() != HttpURLConnection.HTTP_OK) {
-                throw new IOException(connection.getResponseMessage() +
-                        ": with " + urlString);
+                throw new IOException(connection.getResponseMessage());
             }
             int bytesRead = 0;
             byte[] buffer = new byte[1024];
@@ -48,6 +47,7 @@ public class FlickrFetcher {
         return new String(getUrlBytes(urlString));
     }
 
+    // 构造请求 URL: https://api.flickr.com/services/rest/?method=flickr.photos.getRecent&api_key=f21e87e7a6beb65edab0dde2b1888b9e&format=json&nojsoncallback=1&extras=url_s
     public List<GalleryItem> fetchItems() {
 
         List<GalleryItem> items = new ArrayList<>();
@@ -72,23 +72,22 @@ public class FlickrFetcher {
         return items;
     }
 
-    // 构造请求 URL: https://api.flickr.com/services/rest/?method=flickr.photos.getRecent&api_key=f21e87e7a6beb65edab0dde2b1888b9e&format=json&nojsoncallback=1
     private void parseItems(List<GalleryItem> items, JSONObject jsonBody)
         throws IOException, JSONException {
-        JSONObject photosJsonObject = jsonBody.getJSONObject("photos"); // 获取"photos" 的值
-        JSONArray photoJsonArray = photosJsonObject.getJSONArray("photo"); // 获取"photo" 的值
+        JSONObject photos = jsonBody.getJSONObject("photos"); // 获取"photos" 的值
+        JSONArray photoArr = photos.getJSONArray("photo"); // 获取"photo" 的值
 
-        for (int i = 0; i < photoJsonArray.length(); i++) {
-            JSONObject photoJsonObject = photoJsonArray.getJSONObject(i);
+        for (int i = 0; i < photoArr.length(); i++) {
+            JSONObject photo = photoArr.getJSONObject(i);
 
             GalleryItem item = new GalleryItem();
-            item.setId(photoJsonObject.getString("id"));
-            item.setCaption(photoJsonObject.getString("title"));
+            item.setId(photo.getString("id"));
+            item.setCaption(photo.getString("title"));
 
-            if (!photoJsonObject.has("url_s")) {
+            if (!photo.has("url_s")) {
                 continue;
             }
-            item.setUrl(photoJsonObject.getString("url_s"));
+            item.setUrl(photo.getString("url_s"));
             items.add(item);
         }
     }

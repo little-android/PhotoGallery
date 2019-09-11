@@ -1,13 +1,17 @@
 package com.codve.photogallery;
 
+import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -20,6 +24,7 @@ public class PhotoGalleryFragment extends Fragment {
 
     private RecyclerView mPhotoRecyclerView;
     private List<GalleryItem> mItems = new ArrayList<>();
+    private ThumbnailDownloader<PhotoHolder> mThumbnailDownloader;
 
     private static final String TAG = "PhotoGalleryFragment";
 
@@ -32,8 +37,13 @@ public class PhotoGalleryFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
-
         new FetchItemsTask().execute();
+        new LogTask().execute("hello, world", "hello, android");
+
+//        mThumbnailDownloader = new ThumbnailDownloader<>();
+        mThumbnailDownloader.start();
+        mThumbnailDownloader.getLooper();
+        Log.i(TAG, "Background thread started.");
     }
 
     @Override
@@ -49,6 +59,13 @@ public class PhotoGalleryFragment extends Fragment {
         return view;
     }
 
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        mThumbnailDownloader.quit();
+        Log.i(TAG, "Background thread destroyed");
+    }
+
     private void setupAdapter() {
         // 确认 fragment 是否与 activity 关联.
         if (isAdded()) {
@@ -58,7 +75,7 @@ public class PhotoGalleryFragment extends Fragment {
 
     private class FetchItemsTask extends AsyncTask<Void, Void, List<GalleryItem>> {
         @Override
-        protected List<GalleryItem> doInBackground(Void ... params) {
+        protected List<GalleryItem> doInBackground(Void... params) {
             return new FlickrFetcher().fetchItems();
         }
 
@@ -69,17 +86,51 @@ public class PhotoGalleryFragment extends Fragment {
         }
     }
 
+    private class LogTask extends AsyncTask<String, Void, Void> {
+
+        @Override
+        protected Void doInBackground(String... params) {
+            for (String str : params) {
+                Log.i(TAG, str);
+            }
+            return null;
+        }
+    }
+
+    /*
+        final ProgressBar uploadBar = new ProgressBar(getActivity());
+        uploadBar.setMax(100);
+        AsyncTask<Void, Integer, Void> uploadTask = new
+            AsyncTask<Void, Integer, Void>() {
+            public Void doInBackground(Void ... params) {
+                while (!uploadIsFinished()) {
+                    Integer uploadPercent = getUploadPercent();
+                    publishProgress(uploadPercent);
+                    waitUpload();
+                }
+            }
+
+            public void onProgressUpdate(Integer ... params) {
+                int progress = params[0];
+                uploadBar.setProgress(progress);
+            }
+        }
+        uploadTask.execute();
+
+
+    * */
+
     private class PhotoHolder extends RecyclerView.ViewHolder {
-        private TextView mTitleTextView;
+        private ImageView mItemImageView;
 
         public PhotoHolder(View itemView) {
             super(itemView);
 
-            mTitleTextView = (TextView) itemView;
+            mItemImageView = (ImageView) itemView.findViewById(R.id.item_image_view);
         }
 
-        public void bindGalleryItem(GalleryItem item) {
-            mTitleTextView.setText(item.toString());
+        public void bindDrawable(Drawable drawable) {
+            mItemImageView.setImageDrawable(drawable);
         }
     }
 
@@ -90,16 +141,21 @@ public class PhotoGalleryFragment extends Fragment {
             mGalleryItems = galleryItems;
         }
 
+        @NonNull
         @Override
-        public PhotoHolder onCreateViewHolder(ViewGroup viewGroup, int viewType) {
-            TextView textView = new TextView(getActivity());
-            return new PhotoHolder(textView);
+        public PhotoHolder onCreateViewHolder(@NonNull ViewGroup viewGroup, int viewType) {
+            LayoutInflater inflater = LayoutInflater.from(getActivity());
+            // 实例化布局资源
+            View view = inflater.inflate(R.layout.list_item_gallery, viewGroup, false);
+            return new PhotoHolder(view);
         }
 
         @Override
         public void onBindViewHolder(PhotoHolder photoHolder, int position) {
             GalleryItem galleryItem = mGalleryItems.get(position);
-            photoHolder.bindGalleryItem(galleryItem);
+            Drawable placeHolder = getResources().getDrawable(R.drawable.bill_up_close);
+            photoHolder.bindDrawable(placeHolder);
+            mThumbnailDownloader.queueThumbnail(photoHolder, galleryItem.getUrl());
         }
 
         @Override
