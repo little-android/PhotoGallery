@@ -3,6 +3,8 @@ package com.codve.photogallery;
 import android.net.Uri;
 import android.util.Log;
 
+import com.google.gson.Gson;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -62,12 +64,13 @@ public class FlickrFetcher {
                     .appendQueryParameter("extras", "url_s")
                     .build().toString();
             String jsonString = getUrlString(url);
-            JSONObject jsonBody = new JSONObject(jsonString);
-            parseItems(items, jsonBody);
+            Gson gson = new Gson();
+            FlickrData data = gson.fromJson(jsonString, FlickrData.class);
+            items = data.getPhoto();
+//            JSONObject jsonBody = new JSONObject(jsonString);
+//            parseItems(items, jsonBody);
         } catch (IOException e) {
             Log.e(TAG, "Failed to fetch items", e);
-        } catch (JSONException e) {
-            Log.e(TAG, "Failed to parse JSON", e);
         }
         return items;
     }

@@ -46,7 +46,7 @@ public class ThumbnailDownloader<T> extends HandlerThread {
                     handleRequest(target);
                 }
             }
-        }
+        };
     }
 
     @Override
