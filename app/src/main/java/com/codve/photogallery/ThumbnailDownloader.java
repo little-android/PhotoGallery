@@ -16,7 +16,7 @@ public class ThumbnailDownloader<T> extends HandlerThread {
     private static final String TAG = "ThumbnailDownloader";
     private static final int MESSAGE_DOWNLOAD = 0;
 
-    private Boolean mHasQuit = false;
+    private Boolean mHasQuit = false; // 线程退出标志
     private Handler mRequestHandler;
     private ConcurrentMap<T, String> mRequestMap = new ConcurrentHashMap<>();
     private Handler mResponseHandler;
@@ -46,7 +46,7 @@ public class ThumbnailDownloader<T> extends HandlerThread {
                     handleRequest(target);
                 }
             }
-        }
+        };
     }
 
     @Override
@@ -62,7 +62,8 @@ public class ThumbnailDownloader<T> extends HandlerThread {
             mRequestMap.remove(target);
         } else {
             mRequestMap.put(target, url);
-            mRequestHandler.obtainMessage(MESSAGE_DOWNLOAD, target).sendToTarget();
+            mRequestHandler.obtainMessage(MESSAGE_DOWNLOAD, target)
+                    .sendToTarget();
         }
     }
 
@@ -76,9 +77,24 @@ public class ThumbnailDownloader<T> extends HandlerThread {
             final Bitmap bitmap = BitmapFactory
                     .decodeByteArray(bitmapBytes, 0, bitmapBytes.length);
             Log.i(TAG, "Bitmap created");
+            mResponseHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    if (mRequestMap.get(target) != null || mHasQuit) {
+                        return;
+                    }
+                    mRequestMap.remove(target);
+                    mThumbnailDownloadListener.onThumbnailDownloaded(target, bitmap);
+                }
+            });
         } catch (IOException e) {
             Log.e(TAG, "error downloading image", e);
         }
+    }
+
+    public void clearQueue() {
+        mRequestHandler.removeMessages(MESSAGE_DOWNLOAD);
+        mRequestMap.clear();
     }
 
 }

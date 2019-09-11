@@ -1,8 +1,11 @@
 package com.codve.photogallery;
 
+import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -40,7 +43,18 @@ public class PhotoGalleryFragment extends Fragment {
         new FetchItemsTask().execute();
         new LogTask().execute("hello, world", "hello, android");
 
-//        mThumbnailDownloader = new ThumbnailDownloader<>();
+        Handler responseHandler = new Handler();
+        mThumbnailDownloader = new ThumbnailDownloader<>(responseHandler);
+        mThumbnailDownloader.setThumbnailDownloadListener(
+                new ThumbnailDownloader.ThumbnailDownloadListener<PhotoHolder>() {
+                    @Override
+                    public void onThumbnailDownloaded(PhotoHolder target, Bitmap thumbnail) {
+                        Drawable drawable = new BitmapDrawable(getResources(), thumbnail);
+                        target.bindDrawable(drawable);
+
+                    }
+                }
+        );
         mThumbnailDownloader.start();
         mThumbnailDownloader.getLooper();
         Log.i(TAG, "Background thread started.");
@@ -64,6 +78,12 @@ public class PhotoGalleryFragment extends Fragment {
         super.onDestroy();
         mThumbnailDownloader.quit();
         Log.i(TAG, "Background thread destroyed");
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        mThumbnailDownloader.clearQueue();
     }
 
     private void setupAdapter() {
@@ -97,29 +117,6 @@ public class PhotoGalleryFragment extends Fragment {
         }
     }
 
-    /*
-        final ProgressBar uploadBar = new ProgressBar(getActivity());
-        uploadBar.setMax(100);
-        AsyncTask<Void, Integer, Void> uploadTask = new
-            AsyncTask<Void, Integer, Void>() {
-            public Void doInBackground(Void ... params) {
-                while (!uploadIsFinished()) {
-                    Integer uploadPercent = getUploadPercent();
-                    publishProgress(uploadPercent);
-                    waitUpload();
-                }
-            }
-
-            public void onProgressUpdate(Integer ... params) {
-                int progress = params[0];
-                uploadBar.setProgress(progress);
-            }
-        }
-        uploadTask.execute();
-
-
-    * */
-
     private class PhotoHolder extends RecyclerView.ViewHolder {
         private ImageView mItemImageView;
 
@@ -151,7 +148,7 @@ public class PhotoGalleryFragment extends Fragment {
         }
 
         @Override
-        public void onBindViewHolder(PhotoHolder photoHolder, int position) {
+        public void onBindViewHolder(@NonNull PhotoHolder photoHolder, int position) {
             GalleryItem galleryItem = mGalleryItems.get(position);
             Drawable placeHolder = getResources().getDrawable(R.drawable.bill_up_close);
             photoHolder.bindDrawable(placeHolder);
